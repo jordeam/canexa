@@ -1,0 +1,6 @@
+/.cache/
+/Makefile
+/build/
+/main/component.mk
+/sdkconfig
+/sdkconfig.old

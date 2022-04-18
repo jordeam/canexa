@@ -224,12 +224,12 @@ void wait_twai_msg(void *pvParameters) {
     }
     else {
       ESP_LOGD(TAG, "RECV: ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
+      ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
       for (auto &item : tab_msgs) {
         if (msg.identifier == item.can_id) {
-          ESP_LOGD(TAG, "TWAI ID 0x%08x", item.can_id);
           if (item.size == 0 && item.type == TPFLOAT) {
-            // data in message is float, correcting endianess, because TMS
-            // is awckwardly big endian, stupid architecure
+            // data in message is float, correcting endianess, because TMS320
+            // is awckwardly big endian, big stupid architecure
             ((char *)&item.data.f)[3] = msg.data[0];
             ((char *)&item.data.f)[2] = msg.data[1];
             ((char *)&item.data.f)[1] = msg.data[2];
@@ -261,7 +261,6 @@ void wait_twai_msg(void *pvParameters) {
         }
       }
     }
-    ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
   }
   vTaskDelete(NULL);
 }

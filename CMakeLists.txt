@@ -4,3 +4,4 @@ cmake_minimum_required(VERSION 3.5)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(can_emulator)
+target_compile_features(${PROJECT_NAME}.elf PRIVATE cxx_std_20)

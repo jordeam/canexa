@@ -159,6 +159,17 @@ union data_types_u {
   bool b;
 };
 
+class twai_raw_receive {
+public:
+  uint32_t id;
+  uint8_t size;
+  uint8_t data;
+};
+
+uint32_t make_msg_id(uint16_t prio, uint8_t src_grp, uint8_t owner_dev, uint8_t cmd) {
+  return ((uint32_t) prio << 18) | ((uint32_t) src_grp << 14) | ((uint32_t) owner_dev << 8) | ((uint32_t) cmd);
+}
+
 class twai_receive_table {
 public:
   const char *nm;

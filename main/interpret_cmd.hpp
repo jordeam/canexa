@@ -1,19 +1,14 @@
-#ifndef _interpreter_h
-#define _interpreter_h
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#pragma once
 
 #include <stddef.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 
 enum return_codes { not_found = 0, executed, executed_ok, not_executed, wrong_args, wrong_args_number };
 
 typedef enum return_codes (*command_fcn)(char*,int,int);
 
 struct command_entry {
-  char *cmd, *text;
+  const char *cmd, *text;
   command_fcn fcn;
 };
 
@@ -26,9 +21,3 @@ char * strtrim2(char *s);
 int split_tokens(char *s);
 char * get_token(char * s, int len, int n);
 int interpret_cmd(char *s, size_t size);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif

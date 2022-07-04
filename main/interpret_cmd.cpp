@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "interpret_cmd.h"
+#include "interpret_cmd.hpp"
 
 /*
   Returns the number of tokens in s separated by nongraphical character.
@@ -83,8 +83,8 @@ char * get_token(char * s, int len, int n) {
 }
 
 /*
- * Interpret commands
-  It will destroy string s
+ * Interpret commands.
+ * It will destroy string s
  */
 int interpret_cmd(char *s, size_t size) {
   command_entry_t *cmde;

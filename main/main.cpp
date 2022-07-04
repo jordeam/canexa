@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
+#include <string>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,12 +17,13 @@
 
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <cstdio>
 #include <array>
 #include <vector>
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/projdefs.h"
+//#include "freertos/projdefs.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -35,8 +37,9 @@
 
 #include "driver/twai.h"
 
-#include "commands.h"
-#include "interpret_cmd.h"
+#include "commands.hpp"
+#include "interpret_cmd.hpp"
+#include "twai_msg_pool.hpp"
 
 #define TAG "main"
 
@@ -44,76 +47,11 @@
 
 char cmd_line[CMDSIZ], read_buf[CMDSIZ];
 
-/* static const twai_message_t start_message = { */
-/*   .identifier = 0b00110111101110111101010111011, */
-/*   .data_length_code = 4, */
-/*   .extd = 1, */
-/*   .data = {0x01, 0x02 , 0x03 , 0x04 ,0x05 ,0x06 ,0x07 ,0x08}}; */
-
-
-void twai_msg_transmit(twai_message_t msg) {
-  if (twai_transmit(&msg, pdMS_TO_TICKS(100)) == ESP_OK) {
-    ESP_LOGI(TAG, "twai_transmit: Message ID=0x%08x transmitted",
-             msg.identifier);
-    printf("Data: ");
-    for (int i = 0; i < msg.data_length_code; i++)
-      printf("%02x", msg.data[i]);
-    printf(" ");
-    for (int i = 0; i < msg.data_length_code; i++)
-      printf("%d ", msg.data[i]);
-    printf("\n");
-  } else {
-    ESP_LOGE(TAG, "Error sending message ");
-  }
-}
-
-static void twai_transmit_task(void *arg)
-{
-  twai_message_t msg;
-
+static void twai_transmit_task(void *arg) {
   while (true) {
-        sleep(5);
-        msg.identifier = 0x2000106; //!< target power factor
-        float fp = 0.95f;
-        *((int32_t *)msg.data) = *((int32_t *)&fp);
-        msg.data_length_code = 4;
-        msg.extd = 1;
-        msg.rtr = 0;
-        twai_msg_transmit(msg);
-        sleep(2);
-        msg.identifier = 0x200010b; //< Data request: parameters group 1.1
-        msg.data_length_code = 1;
-        msg.extd = 1;
-        msg.rtr = 0;
-        msg.data[0] = 1;
-        twai_msg_transmit(msg);
-        sleep(3);
-        msg.identifier = 0x2000107; //< target output power
-        msg.rtr = 0;
-        msg.data_length_code = 4;
-        fp = 2e3;
-        *((int32_t *)msg.data) = *((int32_t *)&fp);
-        twai_msg_transmit(msg);
+    sleep(5);
   }
   vTaskDelete(NULL);
-}
-
-void twai_delete(void) {
-  //Stop the TWAI driver
-  if (twai_stop() == ESP_OK) {
-    ESP_LOGI(TAG, "Driver stopped");
-  } else {
-    ESP_LOGI(TAG, "Failed to stop driver");
-    return;
-  }
-
-  //Uninstall the TWAI driver
-  if (twai_driver_uninstall() == ESP_OK) {
-    ESP_LOGI(TAG, "Driver uninstalled");
-  } else {
-    ESP_LOGI(TAG, "Failed to uninstall driver");
-    return;
-  }
 }
 
 static void uart_read_command_task(void *arg) {
@@ -141,93 +79,39 @@ static void uart_read_command_task(void *arg) {
   }
 }
 
-// float gsc_vbus_max = 740.0f;
-// float gsc_vbus_target_max = 700.0f;
-// float gsc_vbus_target_min = 680.0f;
-// float gsc_vbus_op_min = 660.0f;
-// float gsc_vbus_crit_min = 630.0f;
-
-enum data_types {
-  TPBOOL,
-  TPFLOAT, //< data is float, but transmitted as float if size is 0, otherwise is transmitted as integer
-  TPINT
-};
-
-union data_types_u {
-  float f;
-  uint32_t d;
-  bool b;
-};
-
-class twai_raw_receive {
-public:
-  uint32_t id;
-  uint8_t size;
-  uint8_t data;
-};
-
-uint32_t make_msg_id(uint16_t prio, uint8_t src_grp, uint8_t owner_dev, uint8_t cmd) {
-  return ((uint32_t) prio << 18) | ((uint32_t) src_grp << 14) | ((uint32_t) owner_dev << 8) | ((uint32_t) cmd);
-}
-
-class twai_receive_table {
-public:
-  const char *nm;
-  const data_types type; //< storage type for internal data
-  data_types_u data;      //< 32 bits for data
-  const uint32_t can_id;
-  int pos;  //< position inside CAN message in bytes
-  int size; //< occupied size in can message in bytes (0 if msg_type is float)
-  int exp;  //< power 10 multiplier
-};
-
-std::array<twai_receive_table, 24> tab_msgs {{
-    {"gsc_vbus", TPFLOAT, {.f = 400.0f}, 0x0100101, 0, 2, -1},
-    {"gsc_power", TPFLOAT, {.f = 220e3f}, 0x0100101, 2, 2, 1},
-    {"gsc_vgrid", TPFLOAT, {.f = 372.0f}, 0x0100101, 4, 2, -1},
-    {"gsc_status", TPINT, {.d = 0}, 0x0100101, 6, 2, 0},
-    {"gsc_hs_temp", TPFLOAT, {.f = 80.0f}, 0x0800105, 0, 0, 0},
-    {"gsc_target_fp", TPFLOAT, {.f = 1.0f}, 0x100010c, 0, 2, -3},
-    {"gsc_vgrid_nom", TPFLOAT, {.f = 380.0f}, 0x100010c, 2, 2, -1},
-    {"gsc_i_max_p", TPFLOAT, {.f = 510.0f}, 0x100010c, 4, 2, -1},
-    {"gsc_droop_coef", TPFLOAT, {.f = 0.03f}, 0x100010c, 6, 2, -3},
-    {"gsc_power_nom", TPFLOAT, {.f = 250e3f}, 0x100010d, 0, 2, 1},
-    {"gsc_vbus_peak", TPFLOAT, {.f = 800.0f}, 0x100010d, 4, 2, 0},
-    {"gsc_reactive_power", TPFLOAT, {.f = 50e3f}, 0x100010e, 0, 2, 1},
-    {"gsc_voltage_imbalance", TPFLOAT, {.f = 0.02f}, 0x100010e, 2, 2, -3},
-    {"gsc_i_line", TPFLOAT, {.f = 210.0f}, 0x100010e, 4, 2, -1},
-    {"gsc_grid_freq", TPFLOAT, {.f = 57.0f}, 0x100010e, 6, 2, -1},
-    {"im_vbus", TPFLOAT, {.f = 600.0f}, 0x0100301, 0, 2, -1},
-    {"im_i_line", TPFLOAT, {.f = 20.0f}, 0x100301, 2, 2, -1},
-    {"im_fs", TPFLOAT, {.f = 50.0f}, 0x0100301, 4, 2, -1},
-    {"im_mode_MI", TPINT, {.d = 0}, 0x0100301, 6, 2, 0},
-    {"im_hs_temp", TPFLOAT, {.f = 40.0f}, 0x0800303, 0, 0, 0},
-    {"im_i_nom", TPFLOAT, {.f = 20.0f}, 0x1000106, 0, 2, -1},
-    {"im_v_nom", TPFLOAT, {.f = 380.0f}, 0x1000106, 2, 2, -1},
-    {"im_i_ss", TPFLOAT, {.f = 80.0f}, 0x1000106, 4, 2, -2},
-    {"im_v", TPFLOAT, {.f = 200.0f}, 0x1000106, 6, 2, -1}
-  }};
-
 static void uart_transmit_command_task(void *arg) {
   while (true) {
-    for (auto &item : tab_msgs) {
-      switch (item.type) {
-      case TPFLOAT:
-        std::cout << item.nm << " " << item.data.f << std::endl;
-        break;
-      case TPBOOL:
-        std::cout << item.nm << " " << item.data.b << std::endl;
-        break;
-      default:
-        std::cout << item.nm << " " << item.data.d << std::endl;
-      }
-    }
+    // New stuff: where is it??
+
     sleep(5);
   }
 }
 
+// Insert collected data into TWAI message pool (msg_recv_pool) and returns true
+// if id match, else returns false
+bool twai_msg_process(twai_message_t * msg) {
+  bool res = false;
+  for (twai_recv_msg *p = msg_recv_pool; p->id != 0; p++) {
+    if (msg->identifier == p->id) {
+      std::cout << "twai_msg_process: registered ID:" << std::hex << p->id << " " << p->name << std::endl;
+      res = true;
+      p->dlc = msg->data_length_code;
+      for (int i = 0; i < TWAI_MAX_DATA; i++) {
+        if (i < p->dlc)
+          p->data[i] = msg->data[i];
+        else
+          p->data[i] = 0;
+      }
+    }
+  }
+  return res;
+}
+
+//
 // TASK
-void wait_twai_msg(void *pvParameters) {
+// Receive TWAI messages
+//
+void twai_receive_task(void *pvParameters) {
   while (true) {
     twai_message_t msg;
 
@@ -247,51 +131,17 @@ void wait_twai_msg(void *pvParameters) {
       ESP_LOGD(TAG, "RECV: RTR ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
     }
     else {
-      ESP_LOGD(TAG, "RECV: ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
-      ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
-      for (auto &item : tab_msgs) {
-        if (msg.identifier == item.can_id) {
-          if (item.size == 0 && item.type == TPFLOAT) {
-            // data in message is float, correcting endianess, because TMS320
-            // is awckwardly big endian, big stupid architecure
-            ((char *)&item.data.f)[3] = msg.data[0 + item.pos];
-            ((char *)&item.data.f)[2] = msg.data[1 + item.pos];
-            ((char *)&item.data.f)[1] = msg.data[2 + item.pos];
-            ((char *)&item.data.f)[0] = msg.data[3 + item.pos];
-          }
-          else if (item.type == TPFLOAT) {
-            // data in message is int but internal storage is float
-            int32_t d = 0;
-            for (int i = 0; i < item.size; i++)
-              ((char *)&d)[i] = msg.data[i + item.pos];
-            item.data.f = d;
-            // multiplier:
-            for (int i = 0; i < item.exp; i++)
-              item.data.f *= 10.0f;
-            for (int i = 0; i > item.exp; i--)
-              item.data.f /= 10.0f;
-          }
-          else if (item.type == TPINT) {
-            // data in message is int and internal storage is too
-            int32_t d = 0;
-            for (int i = 0; i < item.size; i++)
-              ((char *) &d)[i] = msg.data[i + item.pos];
-            item.data.d = d;
-          }
-          else if (item.type == TPBOOL) {
-            // storage is a bit, item.size is a position inside a byte
-            uint8_t mask = 1;
-            for (int i = 0; i < item.size && item.size < 8; i++)
-              mask <<= 1;
-            item.data.b = mask & msg.data[item.pos];
-          }
-        }
-      }
+      ESP_LOGI(TAG, "RECV: ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
+//      ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
+
+      //
+      // New facility here
+      //
+      twai_msg_process(&msg);
     }
   }
   vTaskDelete(NULL);
 }
-
 
 void twai_config(void) {
   // Initialize configuration structures using macro initializers
@@ -322,10 +172,27 @@ void twai_config(void) {
   }
 }
 
+void twai_delete(void) {
+  // Stop the TWAI driver
+  if (twai_stop() == ESP_OK) {
+    ESP_LOGI(TAG, "Driver stopped");
+  } else {
+    ESP_LOGI(TAG, "Failed to stop driver");
+    return;
+  }
+  // Uninstall the TWAI driver
+  if (twai_driver_uninstall() == ESP_OK) {
+    ESP_LOGI(TAG, "Driver uninstalled");
+  } else {
+    ESP_LOGI(TAG, "Failed to uninstall driver");
+    return;
+  }
+}
+
 extern "C" void app_main(void) {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    esp_log_level_set(TAG, ESP_LOG_INFO);
     twai_config();
-    xTaskCreate(&wait_twai_msg, "wait_twai_msg", 4096, NULL, 5, NULL);
+    xTaskCreate(&twai_receive_task, "wait_twai_msg", 4096, NULL, 5, NULL);
     xTaskCreate(&twai_transmit_task, "twai_transmit_task", 4096, NULL, 5, NULL);
     xTaskCreate(&uart_read_command_task, "uart_read_command_task", 4096, NULL, 5, NULL);
     xTaskCreate(&uart_transmit_command_task, "uart_transmit_command_task", 4096, NULL, 5, NULL);

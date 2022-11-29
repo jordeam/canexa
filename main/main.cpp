@@ -47,13 +47,6 @@
 
 char cmd_line[CMDSIZ], read_buf[CMDSIZ];
 
-static void twai_transmit_task(void *arg) {
-  while (true) {
-    sleep(5);
-  }
-  vTaskDelete(NULL);
-}
-
 static void uart_read_command_task(void *arg) {
   ESP_LOGI(TAG, "Entering command_reader...");
   int c;
@@ -79,34 +72,6 @@ static void uart_read_command_task(void *arg) {
   }
 }
 
-static void uart_transmit_command_task(void *arg) {
-  while (true) {
-    // New stuff: where is it??
-
-    sleep(5);
-  }
-}
-
-// Insert collected data into TWAI message pool (msg_recv_pool) and returns true
-// if id match, else returns false
-bool twai_msg_process(twai_message_t * msg) {
-  bool res = false;
-  for (twai_recv_msg *p = msg_recv_pool; p->id != 0; p++) {
-    if (msg->identifier == p->id) {
-      std::cout << "twai_msg_process: registered ID:" << std::hex << p->id << " " << p->name << std::endl;
-      res = true;
-      p->dlc = msg->data_length_code;
-      for (int i = 0; i < TWAI_MAX_DATA; i++) {
-        if (i < p->dlc)
-          p->data[i] = msg->data[i];
-        else
-          p->data[i] = 0;
-      }
-    }
-  }
-  return res;
-}
-
 //
 // TASK
 // Receive TWAI messages
@@ -126,19 +91,28 @@ void twai_receive_task(void *pvParameters) {
     } else
       continue;
 
-    //Process received message
-    if (msg.rtr) {
-      ESP_LOGD(TAG, "RECV: RTR ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
-    }
-    else {
-      ESP_LOGI(TAG, "RECV: ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
-//      ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
+    std::cout << std::hex << std::setfill('0');
 
-      //
-      // New facility here
-      //
-      twai_msg_process(&msg);
+    if (msg.flags && TWAI_MSG_FLAG_EXTD)
+      std::cout << std::setw(4);
+    else
+      std::cout << std::setw(2);
+
+    // print ID
+    std::cout << msg.identifier;
+    std::cout << std::setw(2);
+
+    int len = msg.data_length_code;
+    for (int i = 0; i < len; i++) {
+      std::cout << ' ';
+      std::cout << msg.data[i];
     }
+
+    // Process received message
+    if (msg.rtr) {
+      std::cout << ' ' << "RTR";
+    }
+    std::cout << std::endl;
   }
   vTaskDelete(NULL);
 }
@@ -193,7 +167,5 @@ extern "C" void app_main(void) {
     esp_log_level_set(TAG, ESP_LOG_INFO);
     twai_config();
     xTaskCreate(&twai_receive_task, "wait_twai_msg", 4096, NULL, 5, NULL);
-    xTaskCreate(&twai_transmit_task, "twai_transmit_task", 4096, NULL, 5, NULL);
     xTaskCreate(&uart_read_command_task, "uart_read_command_task", 4096, NULL, 5, NULL);
-    xTaskCreate(&uart_transmit_command_task, "uart_transmit_command_task", 4096, NULL, 5, NULL);
 }

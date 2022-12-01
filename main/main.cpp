@@ -24,6 +24,7 @@
 
 #include "freertos/FreeRTOS.h"
 //#include "freertos/projdefs.h"
+#include "freertos/portmacro.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -55,14 +56,14 @@ static void uart_read_command_task(void *arg) {
     c = fgetc(stdin);
     if (c < 0) {
       vTaskDelay(pdMS_TO_TICKS(500));
-      /* printf("version 0.0.1.pre.alpha\n"); */
     } else {
-      /* putchar(c); */
       if (c >= ' ' && i < CMDSIZ - 1) {
         read_buf[i++] = c;
+        std::cout << (char) c;
       } else if (c == '\r' || c == '\n') {
+        std::cout << '\r' << '\n' << std::endl;
         read_buf[i] = '\0';
-        if (i > 1) {
+        if (i >= 1) {
           strcpy(cmd_line, read_buf);
           interpret_cmd(cmd_line, CMDSIZ);
         }
@@ -84,10 +85,10 @@ void twai_receive_task(void *pvParameters) {
     ESP_LOGV(TAG, "wait_twai_msg task stack: %d", uxTaskGetStackHighWaterMark(NULL));
 
     /* Wait for message to be received */
-    ESP_LOGD(TAG, "TWAI waiting for message...");
+    std::cout << "INFO: TWAI waiting for message..." << std::endl;
     msg.data_length_code = 0;
-    if (twai_receive(&msg, pdMS_TO_TICKS(10000)) == ESP_OK) {
-      ESP_LOGV(TAG, "Message received");
+    if (twai_receive(&msg, portMAX_DELAY) == ESP_OK) {
+      std::cout << "INFO: Message received" << std::endl;
     } else
       continue;
 

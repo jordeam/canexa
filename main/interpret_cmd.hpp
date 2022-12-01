@@ -16,8 +16,4 @@ typedef struct command_entry command_entry_t;
 
 extern const command_entry_t cmdtable[];
 
-int number_tokens(const char * s, int len);
-char * strtrim2(char *s);
-int split_tokens(char *s);
-char * get_token(char * s, int len, int n);
 int interpret_cmd(char *s, size_t size);

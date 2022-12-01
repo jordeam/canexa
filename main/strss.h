@@ -19,6 +19,10 @@ char * strnsubst(char * s, char * pat, char * subs, int n);
 char * newgetline(FILE * stream);
 char * strcatdup(char ** ps, char * sa);
 /* char * strcasestr(char * str, char * substr); */
+int number_tokens(const char *s, int len);
+char *strtrim2(char *s);
+int split_tokens(char *s);
+char *get_token(char *s, int len, int n);
 
 #ifdef __cplusplus
 }

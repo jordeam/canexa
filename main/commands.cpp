@@ -3,14 +3,17 @@
 #include "driver/twai.h"
 #include "freertos/projdefs.h"
 
-#include <ios>
-#include <iostream>
+#include <cstddef>
+#include <cstdint>
 #include <iomanip>
+#include <iostream>
+#include <cstdio>
+
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <math.h>
 
 #define SOFTWARE_ID "GMSC_V1"
 
@@ -21,13 +24,14 @@
 #include "interpret_cmd.hpp"
 #include "twai_msg_pool.hpp"
 
+#include "strss.h"
+
 const command_entry_t cmdtable[] = {
     {"send", "Send a TWAI message composed of ID DATA.", cmd_twai_send},
-    {"version-id", "software version", cmd_version},
+    {"version", "software version", cmd_version},
     {"ids", "List all registered TWAI Ids", cmd_list_ids},
     {"cmds", "List all registered TWAI Ids", cmd_list_cmds},
-    {"twai", "Show all TWAI message conyents", cmd_twai},
-
+    {"twai", "Show all TWAI message contents", cmd_twai},
     {nullptr, nullptr, nullptr}};
 
 float heat_temp;
@@ -53,10 +57,11 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     char *so = get_token(s, s_orig_len, 2);
     int dlen = strlen(so);
     // std::cout << "so=" << so << "(" << dlen << ")" << std::endl;
-    if (dlen % 2 != 0)
+    if (dlen % 2 != 0 || dlen > 16)
       return wrong_args;
     /* opmode_set(duty_cycle); */
-    id = (uint32_t)strtoul(get_token(s, s_orig_len, 1), NULL, 16);
+    char *s_id = get_token(s, s_orig_len, 1);
+    id = (uint32_t)strtoul(s_id, NULL, 16);
     for (int i = 0; 2 * i < dlen; i++) {
       char c1 = so[2 * i];
       char c2 = so[2 * i + 1];
@@ -67,7 +72,7 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     twai_message_t msg;
     msg.identifier = id;
     msg.rtr = 0;
-    msg.extd = 1;
+    msg.extd = strlen(s_id) > 4 ? 1 : 0;
     msg.data_length_code = dlen >> 1;
     memcpy(msg.data, data, msg.data_length_code);
     // std::cout << "ID:" << std::hex << msg.identifier << "(" << (int)msg.data_length_code << ")";
@@ -87,8 +92,7 @@ enum return_codes cmd_twai(char *s, int s_orig_len, int n_tokens) {
     for (twai_recv_msg *p = msg_recv_pool; p->id != 0; p++) {
       std::cout << "twai " << std::hex << p->id << " ";
       for (int i = 0; i < p->dlc; i++)
-        std::cout << std::hex << std::setfill('0') << std::setw(2)
-                  << (int)p->data[i];
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)p->data[i];
       std::cout << std::endl;
     }
     return executed_ok;

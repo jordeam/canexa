@@ -1,4 +1,4 @@
-menu "Example Configuration"
+menu "CAN GPIO Configuration"
 
     config TX_GPIO_NUM
         int "TX GPIO number"

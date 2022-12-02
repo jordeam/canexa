@@ -23,7 +23,7 @@ int interpret_cmd(char *s, size_t size) {
   n_tokens = number_tokens(s, s_orig_len);
 
   for (cmde = (command_entry_t *) cmdtable; cmde->cmd != NULL; cmde++) {
-    if (strcmp(cmde->cmd, s) == 0) {
+    if ((strlen(s) == 1 && s[0] == cmde->cmd[0]) || strcmp(cmde->cmd, s) == 0) {
       r = cmde->fcn(s, s_orig_len, n_tokens);
     }
   }

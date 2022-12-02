@@ -26,15 +26,14 @@
 
 #include "strss.h"
 
+// list of commands, first letter must be different to be used in short commands
 const command_entry_t cmdtable[] = {
     {"send", "Send a TWAI message composed of ID DATA.", cmd_twai_send},
     {"version", "software version", cmd_version},
-    {"ids", "List all registered TWAI Ids", cmd_list_ids},
-    {"cmds", "List all registered TWAI Ids", cmd_list_cmds},
+    {"list", "List all registered TWAI Ids", cmd_list_ids},
+    {"help", "List all available commands", cmd_list_cmds},
     {"twai", "Show all TWAI message contents", cmd_twai},
     {nullptr, nullptr, nullptr}};
-
-float heat_temp;
 
 // Return hex token from 01234567890abcdef or ABCDEF
 // Return 0 on error;
@@ -65,21 +64,15 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     for (int i = 0; 2 * i < dlen; i++) {
       char c1 = so[2 * i];
       char c2 = so[2 * i + 1];
-      // std::cout << "c1,c2=" << c1 << c2 << "c1=" << (int)(hex(c1) << 8) << std::endl;
       data[i] = (hex(c1) << 4) + hex(c2);
     }
     // mount msg and send it
     twai_message_t msg;
     msg.identifier = id;
     msg.rtr = 0;
-    msg.extd = strlen(s_id) > 4 ? 1 : 0;
+    msg.extd = strlen(s_id) >= 4 ? 1 : 0;
     msg.data_length_code = dlen >> 1;
     memcpy(msg.data, data, msg.data_length_code);
-    // std::cout << "ID:" << std::hex << msg.identifier << "(" << (int)msg.data_length_code << ")";
-    // for (int i = 0; i < msg.data_length_code; i++) {
-    //   std::cout << " " << std::setw(2) << std::setfill('0') << (int)msg.data[i];
-    // }
-    // std::cout << std::endl;
 
     twai_transmit(&msg, pdMS_TO_TICKS(200));
     return executed_ok;

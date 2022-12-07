@@ -14,6 +14,8 @@
 
 #define SOFTWARE_ID "GMSC_V1"
 
+#define TAG "command.c"
+
 #include "pbit.h"
 
 #include "commands.hpp"
@@ -23,10 +25,10 @@
 
 const command_entry_t cmdtable[] = {
     {"send", "Send a TWAI message composed of ID DATA.", cmd_twai_send},
-    {"version-id", "software version", cmd_version},
-    {"ids", "List all registered TWAI Ids", cmd_list_ids},
-    {"cmds", "List all registered TWAI Ids", cmd_list_cmds},
-    {"twai", "Show all TWAI message conyents", cmd_twai},
+    {"version", "software version", cmd_version},
+    {"list", "List all registered TWAI Ids", cmd_list_ids},
+    {"help", "List all registered TWAI Ids", cmd_list_cmds},
+    {"get", "Show all TWAI message conyents", cmd_twai},
 
     {nullptr, nullptr, nullptr}};
 
@@ -53,10 +55,11 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     char *so = get_token(s, s_orig_len, 2);
     int dlen = strlen(so);
     // std::cout << "so=" << so << "(" << dlen << ")" << std::endl;
-    if (dlen % 2 != 0)
+    if (dlen % 2 != 0 || dlen > 16)
       return wrong_args;
     /* opmode_set(duty_cycle); */
-    id = (uint32_t)strtoul(get_token(s, s_orig_len, 1), NULL, 16);
+    char *s_id = get_token(s, s_orig_len, 1);
+    id = (uint32_t)strtoul(s_id, NULL, 16);
     for (int i = 0; 2 * i < dlen; i++) {
       char c1 = so[2 * i];
       char c2 = so[2 * i + 1];
@@ -65,14 +68,25 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     }
     // mount msg and send it
     twai_message_t msg;
+    printf("id=%x\r\n", id);
     msg.identifier = id;
     msg.rtr = 0;
-    msg.extd = 1;
+    msg.extd = strlen(s_id) >= 4 ? 1 : 0;
     msg.data_length_code = dlen >> 1;
     memcpy(msg.data, data, msg.data_length_code);
-    // std::cout << "ID:" << std::hex << msg.identifier << "(" << (int)msg.data_length_code << ")";
-    // for (int i = 0; i < msg.data_length_code; i++) {
-    //   std::cout << " " << std::setw(2) << std::setfill('0') << (int)msg.data[i];
+
+    // // known message
+    // msg.identifier = 0x123;
+    // msg.rtr = 0;
+    // msg.extd = 0;
+    // msg.data[0] = 0x35;
+    // msg.data[1] = 0x9a;
+
+    // std::cout << "ID:" << std::hex << msg.identifier << "(" <<
+    // (int)msg.data_length_code << ")"; for (int i = 0; i <
+    // msg.data_length_code; i++) {
+    //   std::cout << " " << std::setw(2) << std::setfill('0') <<
+    //   (int)msg.data[i];
     // }
     // std::cout << std::endl;
 

@@ -60,7 +60,9 @@ static void uart_read_command_task(void *arg) {
       /* putchar(c); */
       if (c >= ' ' && i < CMDSIZ - 1) {
         read_buf[i++] = c;
+        std::cout << (char) c;
       } else if (c == '\r' || c == '\n') {
+        std::cout << "\r\n" << std::endl;
         read_buf[i] = '\0';
         if (i > 1) {
           strcpy(cmd_line, read_buf);
@@ -91,21 +93,19 @@ void twai_receive_task(void *pvParameters) {
     } else
       continue;
 
-    std::cout << std::hex << std::setfill('0');
-
-    if (msg.flags && TWAI_MSG_FLAG_EXTD)
-      std::cout << std::setw(4);
-    else
-      std::cout << std::setw(2);
+    // if (msg.flags && TWAI_MSG_FLAG_EXTD)
+    //   std::cout << std::setw(8);
+    // else
+    //   std::cout << std::setw(4);
 
     // print ID
-    std::cout << msg.identifier;
-    std::cout << std::setw(2);
+    std::cout << std::hex << (int) msg.identifier;
 
-    int len = msg.data_length_code;
-    for (int i = 0; i < len; i++) {
+    //    std::cout << std::setw(2);
+
+    for (int i = 0; i < msg.data_length_code; i++) {
       std::cout << ' ';
-      std::cout << msg.data[i];
+      std::cout << std::hex << (int) msg.data[i];
     }
 
     // Process received message

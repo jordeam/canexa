@@ -105,7 +105,7 @@ void twai_receive_task(void *pvParameters) {
 
     for (int i = 0; i < msg.data_length_code; i++) {
       std::cout << ' ';
-      std::cout << std::hex << (int) msg.data[i];
+      std::cout << std::hex << std::setw(2) << msg.data[i];
     }
 
     // Process received message

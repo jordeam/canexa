@@ -70,7 +70,7 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     twai_message_t msg;
     msg.identifier = id;
     msg.rtr = 0;
-    msg.extd = strlen(s_id) >= 4 ? 1 : 0;
+    msg.extd = id > 0x7ff ? 1 : 0;
     msg.data_length_code = dlen >> 1;
     memcpy(msg.data, data, msg.data_length_code);
 

@@ -95,12 +95,12 @@ void twai_receive_task(void *pvParameters) {
     std::cout << "twai ";
 
     if (msg.flags && TWAI_MSG_FLAG_EXTD)
-      std::cout << std::hex << std::setw(4) << std::setfill('0') << msg.identifier << ' ';
+      std::cout << std::hex << std::setw(8) << std::setfill('0') << msg.identifier << ' ';
     else
-      std::cout << std::hex << std::setw(2) << std::setfill('0') << msg.identifier << ' ';
+      std::cout << std::hex << std::setw(4) << std::setfill('0') << msg.identifier << ' ';
 
     for (int i = 0; i < msg.data_length_code; i++) {
-      std::cout << std::setw(2) << std::setfill('0') << (int) msg.data[i];
+      std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) msg.data[i];
     }
 
     // Process received message

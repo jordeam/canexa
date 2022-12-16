@@ -1,5 +1,4 @@
 #include "hal/twai_types.h"
-//#include "driver/twai.h"
 #include "driver/twai.h"
 #include "freertos/projdefs.h"
 
@@ -24,7 +23,15 @@
 #include "interpret_cmd.hpp"
 #include "twai_msg_pool.hpp"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "strss.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 // list of commands, first letter must be different to be used in short commands
 const command_entry_t cmdtable[] = {

@@ -9,7 +9,15 @@
 
 #include "interpret_cmd.hpp"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "strss.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 /*
  * Interpret commands.

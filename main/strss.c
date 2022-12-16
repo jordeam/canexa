@@ -23,107 +23,6 @@ size_t strrspn(const char * s, const char * skipset) {
   return strlen(s) - i -1;
 }
 
-// clear spaces before and after text
-char * strtrim(char * s) {
-  int i, j = 0;
-  int n = strlen(s);
-
-  j = strspn(s, " \t\n\r");
-  if (j) {
-    n -= j;
-    for (i = 0; i < n; i++)
-      s[i] = s[j++];
-    s[i] = '\0';
-  }
-  //  printf("  j=%d, strrspn=%d\n", j, strrspn(s, " \t\n\r"));
-  i = strrspn(s, " \t\n\r");
-  //  printf("s = [%s] i = %d\n", s, i);
-  s[strlen(s) - i] = '\0';
-  return s;
-}
-
-char * strsubst(char * s, char * pat, char * subs) {
-  char * sp;
-  char * ss;
-  int len;
-
-  sp = strstr(s, pat);
-  while (sp) {
-    ss = strdup(sp + strlen(pat));
-    * sp = '\0';
-    len = strlen(s) + strlen(subs);
-    strcat(s, subs);
-    strcat(s, ss);
-    free(ss);
-#ifdef DEBUG
-    printf("s = %s, pat = %s, subs = %s, ss = %s\n", s, pat, subs, ss);
-#endif
-    if (len < strlen(s))
-      sp = strstr(s+len, pat);
-    else
-      break;
-  }
-  return s;
-}
-
-char * strnsubst(char * s, char * pat, char * subs, int n) {
-  char * sp;
-  char * ss;
-  int len;
-  int i = 0;
-
-  sp = strstr(s, pat);
-  while (sp && (i < n || i < 0)) {
-    ss = strdup(sp + strlen(pat));
-    * sp = '\0';
-    len = strlen(s) + strlen(subs);
-    strcat(s, subs);
-    strcat(s, ss);
-    free(ss);
-#ifdef DEBUG
-    printf("s = %s, pat = %s, subs = %s, ss = %s\n", s, pat, subs, ss);
-#endif
-    if (len < strlen(s))
-      sp = strstr(s+len, pat);
-    else
-      break;
-    i++;
-  }
-  return s;
-}
-
-/* char * newgetline(FILE * stream) { */
-/*   char * s = NULL; */
-/*   size_t len = 0; */
-/*   getline(& s, & len, stream); */
-/*   if (feof(stream)) */
-/*     return NULL; */
-/*   return s; */
-/* } */
-
-char * strcatdup(char ** ps, char * sa) {
-  char * s = strdup(*ps);
-
-  free(*ps);
-  asprintf(ps, "%s%s", s, sa);
-  free(s);
-
-  return *ps;
-}
-
-/* char * strcasestr(char * str, char * substr) { */
-/*   int i1, len1 = strlen(str); */
-/*   int i2 = 0, len2 = strlen(substr); */
-
-/*   for (i1 = 0; len2 && i1 <= len1 - len2; i1++) */
-/*     if (tolower(str[i1]) == tolower(substr[i2])) { */
-/*       i2++; */
-/*       if (i2 >= len2) */
-/* 	return (char *) (((int) str) + i1 - i2); */
-/*     } */
-/*   return NULL; */
-/* } */
-
 /*
   Returns the number of tokens in s separated by nongraphical character.
 */
@@ -156,9 +55,6 @@ char * strtrim2(char *s) {
   return s;
 }
 
-/*
-  Remove the beginning and ending spaces ou non graphical characters, and multiple graphical characters between worlds, letting only one non-grafical character, e.g., '\0' so it is easy to get the tokens. Returns string size to be used with get_token and number_token.
-*/
 int split_tokens(char *s) {
   int i, j, len = strlen(s);
   /* let's trim the beginning */

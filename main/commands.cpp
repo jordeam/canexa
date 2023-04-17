@@ -93,7 +93,7 @@ enum return_codes cmd_twai(char *s, int s_orig_len, int n_tokens) {
       std::cout << "twai " << std::hex << p->id << " ";
       for (int i = 0; i < p->dlc; i++)
         std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)p->data[i];
-      std::cout << std::endl;
+      std::cout << '\n';
     }
     return executed_ok;
   }

@@ -5,6 +5,7 @@
  *      Author: jrm
  */
 
+#include <inttypes.h>
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
@@ -33,7 +34,6 @@
 #include "driver/gpio.h"
 #include "hal/twai_types.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
 #include "driver/twai.h"
@@ -47,6 +47,8 @@
 #define CMDSIZ 100
 
 char cmd_line[CMDSIZ], read_buf[CMDSIZ];
+
+using std::cout;
 
 static void uart_read_command_task(void *arg) {
   ESP_LOGI(TAG, "Entering command_reader...");
@@ -81,8 +83,8 @@ void twai_receive_task(void *pvParameters) {
   while (true) {
     twai_message_t msg;
 
-    ESP_LOGV(TAG, "RAM left %d", esp_get_free_heap_size());
-    ESP_LOGV(TAG, "wait_twai_msg task stack: %d", uxTaskGetStackHighWaterMark(NULL));
+//    ESP_LOGI(TAG, "RAM left %ld", esp_get_free_heap_size());
+ //   ESP_LOGI(TAG, "wait_twai_msg task stack: %ld", uxTaskGetStackHighWaterMark(NULL));
 
     /* Wait for message to be received */
     std::cout << "INFO: TWAI waiting for message..." << std::endl;
@@ -126,7 +128,7 @@ void twai_config(void) {
 
   // Install TWAI driver
   if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-    ESP_LOGI(TAG, "TWAI Driver installed\n");
+//    ESP_LOGI(TAG, "TWAI Driver installed\n");
   } else {
     printf("Failed to install TWAI driver\n");
     return;
@@ -134,9 +136,9 @@ void twai_config(void) {
 
   // Start TWAI driver
   if (twai_start() == ESP_OK) {
-    ESP_LOGI(TAG, "TWAI Driver started");
+//    ESP_LOGI(TAG, "TWAI Driver started");
   } else {
-    ESP_LOGI(TAG, "Failed to start TWAI driver");
+//    ESP_LOGI(TAG, "Failed to start TWAI driver");
     return;
   }
 }
@@ -144,16 +146,16 @@ void twai_config(void) {
 void twai_delete(void) {
   // Stop the TWAI driver
   if (twai_stop() == ESP_OK) {
-    ESP_LOGI(TAG, "Driver stopped");
+//    ESP_LOGI(TAG, "Driver stopped");
   } else {
-    ESP_LOGI(TAG, "Failed to stop driver");
+//    ESP_LOGI(TAG, "Failed to stop driver");
     return;
   }
   // Uninstall the TWAI driver
   if (twai_driver_uninstall() == ESP_OK) {
-    ESP_LOGI(TAG, "Driver uninstalled");
+//    ESP_LOGI(TAG, "Driver uninstalled");
   } else {
-    ESP_LOGI(TAG, "Failed to uninstall driver");
+//    ESP_LOGI(TAG, "Failed to uninstall driver");
     return;
   }
 }

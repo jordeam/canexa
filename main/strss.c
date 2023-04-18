@@ -29,7 +29,7 @@ size_t strrspn(const char * s, const char * skipset) {
 int number_tokens(const char * s, int len) {
   int i, count = 0, was_graph = 0;
   for (i = 0; i < len; i++)
-    if (isgraph(s[i])) {
+    if (isgraph((int)s[i])) {
       if (!was_graph)
         count++;
       was_graph = 1;
@@ -44,11 +44,11 @@ int number_tokens(const char * s, int len) {
 char * strtrim2(char *s) {
   int i, j, len;
   /* Let's trim the end */
-  for (i = strlen(s) - 1; !isgraph(s[i]) && i >= 0; i--)
+  for (i = strlen(s) - 1; !isgraph((int)s[i]) && i >= 0; i--)
     s[i] = '\0';
   /* let's trim the beginning */
   len = strlen(s);
-  for (i = 0; !isgraph(s[i]) && i < len; i++);
+  for (i = 0; !isgraph((int)s[i]) && i < len; i++);
   for (j = 0; i < len; i++, j++)
     s[j] = s[i];
   s[j] = '\0';
@@ -58,18 +58,18 @@ char * strtrim2(char *s) {
 int split_tokens(char *s) {
   int i, j, len = strlen(s);
   /* let's trim the beginning */
-  for (i = 0; !isgraph(s[i]) && i < len; i++);
+  for (i = 0; !isgraph((int)s[i]) && i < len; i++);
   /* Let's split the string */
   for (j = 0; i < len; j++)
-    if (isgraph(s[i]))
+    if (isgraph((int)s[i]))
       s[j] = s[i++];
     else {
       s[j] = '\0';
-      while(!isgraph(s[++i]) && i < len);
+      while(!isgraph((int)s[++i]) && i < len);
     }
   s[j] = '\0';
   /* Let's trim the end */
-  for (i = j; !isgraph(s[i]) && i >= 0; i--)
+  for (i = j; !isgraph((int)s[i]) && i >= 0; i--)
     s[i] = '\0';
   return i + 1;
 }
@@ -81,7 +81,7 @@ char * get_token(char * s, int len, int n) {
   int i, count = 0, was_graph = 0;
   if (n == count) return s;
   for (i = 0; i < len; i++)
-    if (isgraph(s[i])) {
+    if (isgraph((int)s[i])) {
       if (!was_graph) {
         count++;
         if (n == count - 1)

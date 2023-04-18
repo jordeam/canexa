@@ -15,11 +15,12 @@
 
 const char *TAG = "twai_msg_pool";
 
+using std::cout;
+
 void twai_msg_transmit(twai_message_t msg) {
   if (twai_transmit(&msg, pdMS_TO_TICKS(100)) == ESP_OK) {
-    ESP_LOGI(TAG, "twai_transmit: Message ID=0x%08x transmitted",
-             msg.identifier);
-    printf("Data: ");
+//    ESP_LOGI(TAG, "twai_transmit: Message ID=0x%08x transmitted", msg.identifier);
+    printf("twai_msg_transmit: Data: ");
     for (int i = 0; i < msg.data_length_code; i++)
       printf("%02x", msg.data[i]);
     printf(" ");
@@ -27,7 +28,7 @@ void twai_msg_transmit(twai_message_t msg) {
       printf("%d ", msg.data[i]);
     printf("\n");
   } else {
-    ESP_LOGE(TAG, "Error sending message ");
+    // ESP_LOGE(TAG, "Error sending message ");
   }
 }
 

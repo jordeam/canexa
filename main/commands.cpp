@@ -1,3 +1,7 @@
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+#include "esp_log.h"
+#include "hal/ledc_types.h"
 #include "hal/twai_types.h"
 #include "driver/twai.h"
 #include "freertos/projdefs.h"
@@ -14,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TAG "commands"
+
 #define SOFTWARE_ID "GMSC_V1"
 
 #include "pbit.h"
@@ -23,15 +29,12 @@
 #include "interpret_cmd.hpp"
 #include "twai_msg_pool.hpp"
 
-#ifdef __cplusplus
+#include "../../esp-jrm-cxx/include/gpio_cxx.hpp"
+
 extern "C" {
-#endif
-
+#include "inv_config.h"
 #include "strss.h"
-
-#ifdef __cplusplus
 }
-#endif
 
 // list of commands, first letter must be different to be used in short commands
 const command_entry_t cmdtable[] = {
@@ -40,6 +43,7 @@ const command_entry_t cmdtable[] = {
     {"list", "List all registered TWAI Ids", cmd_list_ids},
     {"help", "List all available commands", cmd_list_cmds},
     {"twai", "Show all TWAI message contents", cmd_twai},
+    {"inv", "Send an inverter command, ex: inv 1 25 (enable 25%), inv 0 00 (disable)", cmd_inv},
     {nullptr, nullptr, nullptr}};
 
 // Return hex token from 01234567890abcdef or ABCDEF
@@ -122,6 +126,38 @@ enum return_codes cmd_list_cmds(char *s, int s_orig_len, int n_tokens) {
   if (n_tokens == 1) {
     for (command_entry_t *p = (command_entry_t *) cmdtable; p->fcn != nullptr; p++)
       std::cout << "cmd " << p->cmd << " - " << p->text << std::endl;
+    return executed_ok;
+  }
+  return wrong_args_number;
+}
+
+enum return_codes cmd_inv(char *s, int s_orig_len, int n_tokens) {
+  if (n_tokens == 3) {
+    char *en_s = get_token(s, s_orig_len, 1);
+    char *rate_s = get_token(s, s_orig_len, 2);
+    int en_len = strlen(en_s);
+    int rate_len = strlen(rate_s);
+    if (en_len != 1 || rate_len != 2)
+      return wrong_args;
+    /* opmode_set(duty_cycle); */
+    bool en = (en_s[0] == '1');
+    uint32_t rate = (uint32_t)strtoul(rate_s, nullptr, 10);
+
+    if (rate > 99)
+      return wrong_args;
+
+    // Enable is inverted
+    gpio_set_level(Inv_En_Pin, !en);
+
+    // if (rate == 99)
+    //   ledc_set_duty(LEDC_MODE, LEDC_CHANNEL_0, LEDC_DUTY_MAX);
+    // return executed_ok;
+
+    // rate is inverted
+    int rate_inv = LEDC_DUTY_MAX * (float) (99 - rate) / 99.0f;
+    printf("cmd_inv: rate_inv=%d\n", rate_inv);
+    ledc_set_duty(LEDC_MODE, LEDC_CHANNEL_0, rate_inv);
+    ledc_update_duty(LEDC_MODE, LEDC_CHANNEL_0);
     return executed_ok;
   }
   return wrong_args_number;

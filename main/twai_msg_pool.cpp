@@ -15,7 +15,7 @@
 
 const char *TAG = "twai_msg_pool";
 
-using std::cout;
+// using std::cout;
 
 void twai_msg_transmit(twai_message_t msg) {
   if (twai_transmit(&msg, pdMS_TO_TICKS(100)) == ESP_OK) {
@@ -43,15 +43,16 @@ twai_recv_msg::twai_recv_msg(uint16_t prio, uint8_t src_grp, uint8_t owner_dev, 
 }
 
 twai_recv_msg msg_recv_pool[] = {
-    twai_recv_msg((int)TWAIPRIO::CC, 0, GSC_OWNER, 1, "Vbus Po Vgrid gsc_status"),
-    twai_recv_msg((int)TWAIPRIO::TS, 0, GSC_OWNER, 3, "Heatsink temp"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 12, "Params 1/1"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 13, "Params 1/2"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 14, "Meas 1/1"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 15, "Meas 2/1"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 16, "Meas 2/2"),
-    twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 17, "Meas 2/3"),
-    twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 18, "ADC A 1 2 3 4"),
-    twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 19, "ADC B 14 2 3 4"),
-    twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 20, "ADC C 14 2 3 4"),
-    twai_recv_msg(0, nullptr)};
+  twai_recv_msg((int)TWAIPRIO::CC, 0, GSC_OWNER, 1, "Vbus Po Vgrid gsc_status"),
+  twai_recv_msg((int)TWAIPRIO::TS, 0, GSC_OWNER, 3, "Heatsink temp"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 12, "Params 1/1"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 13, "Params 1/2"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 14, "Meas 1/1"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 15, "Meas 2/1"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 16, "Meas 2/2"),
+  twai_recv_msg((int)TWAIPRIO::SI, 0, GSC_OWNER, 17, "Meas 2/3"),
+  twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 18, "ADC A 1 2 3 4"),
+  twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 19, "ADC B 14 2 3 4"),
+  twai_recv_msg((int)TWAIPRIO::SM, 0, GSC_OWNER, 20, "ADC C 14 2 3 4"),
+  twai_recv_msg(0, nullptr)
+};

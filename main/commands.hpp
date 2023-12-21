@@ -7,3 +7,4 @@ enum return_codes cmd_twai_send(char *, int, int);
 enum return_codes cmd_list_ids(char *, int, int);
 enum return_codes cmd_list_cmds(char *, int, int);
 enum return_codes cmd_twai(char *, int, int);
+enum return_codes cmd_inv(char *, int, int);

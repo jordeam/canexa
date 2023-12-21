@@ -33,14 +33,20 @@
 #include "esp_types.h"
 #include "driver/gpio.h"
 #include "hal/twai_types.h"
-
 #include "esp_log.h"
+#include "driver/ledc.h"
 
 #include "driver/twai.h"
 
 #include "commands.hpp"
 #include "interpret_cmd.hpp"
 #include "twai_msg_pool.hpp"
+
+#include "../../esp-jrm-cxx/include/gpio_cxx.hpp"
+
+extern "C" {
+#include "inv_config.h"
+}
 
 #define TAG "main"
 
@@ -57,7 +63,7 @@ static void uart_read_command_task(void *arg) {
   for (;;) {
     c = fgetc(stdin);
     if (c < 0) {
-      vTaskDelay(pdMS_TO_TICKS(500));
+      vTaskDelay(pdMS_TO_TICKS(100));
     } else {
       if (c >= ' ' && i < CMDSIZ - 1) {
         read_buf[i++] = c;
@@ -116,8 +122,6 @@ void twai_receive_task(void *pvParameters) {
 
 void twai_config(void) {
   // Initialize configuration structures using macro initializers
-  /*!< new port V1.0 ============CAN=================era 16 e
-   * 33========================================*/
   twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
       (gpio_num_t)CONFIG_TX_GPIO_NUM, (gpio_num_t)CONFIG_RX_GPIO_NUM,
       TWAI_MODE_NORMAL);
@@ -162,6 +166,7 @@ void twai_delete(void) {
 
 extern "C" void app_main(void) {
     esp_log_level_set(TAG, ESP_LOG_INFO);
+    inv_config();
     twai_config();
     xTaskCreate(&twai_receive_task, "wait_twai_msg", 4096, NULL, 5, NULL);
     xTaskCreate(&uart_read_command_task, "uart_read_command_task", 4096, NULL, 5, NULL);

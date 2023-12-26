@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #include <cmath>
 
@@ -53,7 +55,7 @@ char cmd_line[CMDSIZ], read_buf[CMDSIZ];
 
 void twai_msg_transmit(twai_message_t msg) {
   if (twai_transmit(&msg, pdMS_TO_TICKS(100)) == ESP_OK) {
-    ESP_LOGI(TAG, "twai_transmit: Message ID=0x%08x transmitted",
+    ESP_LOGI(TAG, "twai_transmit: Message ID=0x%08lx transmitted",
              msg.identifier);
     printf("Data: ");
     for (int i = 0; i < msg.data_length_code; i++)
@@ -231,7 +233,7 @@ void wait_twai_msg(void *pvParameters) {
   while (true) {
     twai_message_t msg;
 
-    ESP_LOGV(TAG, "RAM left %d", esp_get_free_heap_size());
+    ESP_LOGV(TAG, "RAM left %d", (unsigned int) esp_get_free_heap_size());
     ESP_LOGV(TAG, "wait_twai_msg task stack: %d", uxTaskGetStackHighWaterMark(NULL));
 
     /* Wait for message to be received */
@@ -244,10 +246,10 @@ void wait_twai_msg(void *pvParameters) {
 
     //Process received message
     if (msg.rtr) {
-      ESP_LOGD(TAG, "RECV: RTR ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
+      ESP_LOGD(TAG, "RECV: RTR ID=0x%08x %s size:%d", (unsigned int) msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
     }
     else {
-      ESP_LOGD(TAG, "RECV: ID=0x%08x %s size:%d", msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
+      ESP_LOGD(TAG, "RECV: ID=0x%08x %s size:%d", (unsigned int) msg.identifier, (msg.flags & TWAI_MSG_FLAG_EXTD) ? "EXT" : "STD", msg.data_length_code);
       ESP_LOG_BUFFER_HEX("TWAI-main", msg.data, msg.data_length_code);
       for (auto &item : tab_msgs) {
         if (msg.identifier == item.can_id) {

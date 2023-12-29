@@ -5,6 +5,13 @@
  *      Author: jrm
  */
 
+#include "fcntl.h"
+#include "sys/types.h"
+#include "sys/cdefs.h"
+#include "esp_vfs_common.h"
+#include "esp_console.h"
+#include "esp_vfs_dev.h"
+
 #include <inttypes.h>
 #include <cstddef>
 #include <cstdint>
@@ -29,9 +36,12 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+
 #include "esp_err.h"
 #include "esp_types.h"
+#include "driver/uart.h"
 #include "driver/gpio.h"
+#include "esp_console.h"
 #include "hal/twai_types.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
@@ -56,20 +66,28 @@ char cmd_line[CMDSIZ], read_buf[CMDSIZ];
 
 using std::cout;
 
-static void uart_read_command_task(void *arg) {
+// static void read_command_task(void *arg) {
+static void read_command() {
   ESP_LOGI(TAG, "Entering command_reader...");
-  int c;
+  char c;
+  // int c;
   static int i = 0;
   for (;;) {
-    c = fgetc(stdin);
-    if (c < 0) {
+    int len = uart_read_bytes(UART_NUM_0, &c, 1, portMAX_DELAY); // illegal instruction
+    // std::cin.get(&c, 1); // it does not work oy any other overloads
+    // c = fgetc(stdin);
+    // std::cout << "got " << c << '\n';
+    if (len <= 0) {
+      cout << "WARN: len < 0\n";
       vTaskDelay(pdMS_TO_TICKS(100));
-    } else {
+    }
+    else {
       if (c >= ' ' && i < CMDSIZ - 1) {
         read_buf[i++] = c;
-        std::cout << (char) c;
-      } else if (c == '\r' || c == '\n') {
-        std::cout << '\r' << '\n' << std::endl;
+        // std::cout << "read_command: c=" << (char) c << '\n'; // " len=" << len << '\n';
+      }
+      else if (c == '\r' || c == '\n') {
+        // std::cout << '\r' << '\n' << std::endl;
         read_buf[i] = '\0';
         if (i >= 1) {
           strcpy(cmd_line, read_buf);
@@ -164,10 +182,50 @@ void twai_delete(void) {
   }
 }
 
+
 extern "C" void app_main(void) {
     esp_log_level_set(TAG, ESP_LOG_INFO);
+
+    esp_console_dev_uart_config_t dev_uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+    fflush(stdout);
+    fsync(fileno(stdout));
+    esp_console_dev_uart_config_t* dev_config = &dev_uart_config;
+    esp_vfs_dev_uart_port_set_rx_line_endings(dev_config->channel, ESP_LINE_ENDINGS_CR);
+    /* Move the caret to the beginning of the next line on '\n' */
+    esp_vfs_dev_uart_port_set_tx_line_endings(dev_config->channel, ESP_LINE_ENDINGS_CRLF);
+
+        /* Configure UART. Note that REF_TICK/XTAL is used so that the baud rate remains
+     * correct while APB frequency is changing in light sleep mode.
+     */
+#if SOC_UART_SUPPORT_REF_TICK
+    uart_sclk_t clk_source = UART_SCLK_REF_TICK;
+    // REF_TICK clock can't provide a high baudrate
+    if (dev_config->baud_rate > 1 * 1000 * 1000) {
+        clk_source = UART_SCLK_DEFAULT;
+        ESP_LOGW(TAG, "light sleep UART wakeup might not work at the configured baud rate");
+    }
+#elif SOC_UART_SUPPORT_XTAL_CLK
+    uart_sclk_t clk_source = UART_SCLK_XTAL;
+#else
+    #error "No UART clock source is aware of DFS"
+#endif // SOC_UART_SUPPORT_xxx
+
+    const uart_config_t uart_config = {
+      .baud_rate = dev_config->baud_rate,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .source_clk = clk_source,
+    };
+    uart_param_config(dev_config->channel, &uart_config);
+    uart_set_pin(dev_config->channel, dev_config->tx_gpio_num, dev_config->rx_gpio_num, -1, -1);
+    /* Install UART driver for interrupt-driven reads and writes */
+    uart_driver_install(dev_config->channel, 256, 0, 0, NULL, 0);
+/* Tell VFS to use UART driver */
+    esp_vfs_dev_uart_use_driver(dev_config->channel);
+
     inv_config();
     twai_config();
     xTaskCreate(&twai_receive_task, "wait_twai_msg", 4096, NULL, 5, NULL);
-    xTaskCreate(&uart_read_command_task, "uart_read_command_task", 4096, NULL, 5, NULL);
+    read_command();
 }

@@ -20,8 +20,6 @@
 
 #define TAG "commands"
 
-#define SOFTWARE_ID "GMSC_V1"
-
 #include "pbit.h"
 
 #include "commands.hpp"
@@ -155,7 +153,7 @@ enum return_codes cmd_inv(char *s, int s_orig_len, int n_tokens) {
 
     // rate is inverted
     int rate_inv = LEDC_DUTY_MAX * (float) (99 - rate) / 99.0f;
-    printf("cmd_inv: rate_inv=%d\n", rate_inv);
+    printf("cmd_inv: %s rate_inv=%d\n", en ? "ON" : "OFF", rate_inv);
     ledc_set_duty(LEDC_MODE, LEDC_CHANNEL_0, rate_inv);
     ledc_update_duty(LEDC_MODE, LEDC_CHANNEL_0);
     return executed_ok;

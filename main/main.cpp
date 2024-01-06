@@ -225,7 +225,13 @@ extern "C" void app_main(void) {
     esp_vfs_dev_uart_use_driver(dev_config->channel);
 
     inv_config();
+
     twai_config();
     xTaskCreate(&twai_receive_task, "wait_twai_msg", 4096, NULL, 5, NULL);
+
+    // send a version command to show it is ready
+    std::cout << "version " << SOFTWARE_ID << '\n';
+
+    // enter in read loop forever
     read_command();
 }

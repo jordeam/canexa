@@ -118,6 +118,20 @@ void twai_receive_task(void *pvParameters) {
     } else
       continue;
 
+    // Verify if it is a Tupã Inverter PWM command
+    if (msg.identifier == 0x1FFC0700 && msg.data_length_code == 1) {
+      bool en = (msg.data[0] & 0x80) != 0;
+      int rate = msg.data[0] &0x7f;
+      if (rate > 99)
+        rate = 0; //< error
+      // Enable is inverted
+      gpio_set_level(Inv_En_Pin, !en);
+      int rate_inv = LEDC_DUTY_MAX * (float) (99 - rate) / 99.0f;
+      printf("cmd_inv: %s rate_inv=%d\n", en ? "ON" : "OFF", rate_inv);
+      ledc_set_duty(LEDC_MODE, LEDC_CHANNEL_0, rate_inv);
+      ledc_update_duty(LEDC_MODE, LEDC_CHANNEL_0);
+    }
+
     std::cout << "twai ";
 
     if (msg.flags && TWAI_MSG_FLAG_EXTD)

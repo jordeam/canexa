@@ -26,7 +26,7 @@ void inv_config(void) {
   // Channel 0 to Inverter PWM
   ledc_channel_config_t ledc_channel_0 = {
     .channel    = LEDC_CHANNEL_0,
-    .duty       = 0,
+    .duty       = (1 << 13) - 1,
     .gpio_num   = Inv_PWM_Pin,
     .speed_mode = LEDC_MODE,
     .intr_type  = LEDC_INTR_DISABLE,

@@ -1,9 +1,11 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "esp_log.h"
+#include "hal/gpio_types.h"
 #include "hal/ledc_types.h"
 #include "hal/twai_types.h"
 #include "driver/twai.h"
+#include "driver/gpio.h"
 #include "freertos/projdefs.h"
 
 #include <cstddef>
@@ -20,18 +22,20 @@
 
 #define TAG "commands"
 
-#include "pbit.h"
-
-#include "commands.hpp"
 #include "hal/twai_types.h"
 #include "interpret_cmd.hpp"
 #include "twai_msg_pool.hpp"
 
 #include "../../esp-jrm-cxx/include/gpio_cxx.hpp"
 
+#include "pbit.h"
+#include "commands.hpp"
+
+
 extern "C" {
 #include "inv_config.h"
 #include "strss.h"
+#include "twai_config.h"
 }
 
 // list of commands, first letter must be different to be used in short commands
@@ -42,6 +46,7 @@ const command_entry_t cmdtable[] = {
     {"help", "List all available commands", cmd_list_cmds},
     {"twai", "Show all TWAI message contents", cmd_twai},
     {"inv", "Send an inverter command, ex: inv 1 25 (enable 25%), inv 0 00 (disable)", cmd_inv},
+    {"led", "Make led of GPIO12 on, off or blink", cmd_led},
     {nullptr, nullptr, nullptr}};
 
 // Return hex token from 01234567890abcdef or ABCDEF
@@ -69,6 +74,7 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
       return wrong_args;
     /* opmode_set(duty_cycle); */
     char *s_id = get_token(s, s_orig_len, 1);
+    int len_id = strlen(s_id);
     id = (uint32_t)strtoul(s_id, NULL, 16);
     for (int i = 0; 2 * i < dlen; i++) {
       char c1 = so[2 * i];
@@ -79,11 +85,20 @@ enum return_codes cmd_twai_send(char *s, int s_orig_len, int n_tokens) {
     twai_message_t msg;
     msg.identifier = id;
     msg.rtr = 0;
-    msg.extd = id > 0x7ff ? 1 : 0;
+    msg.extd = len_id > 4 ? 1 : 0;
     msg.data_length_code = dlen >> 1;
     memcpy(msg.data, data, msg.data_length_code);
 
-    twai_transmit(&msg, pdMS_TO_TICKS(200));
+    esp_err_t err = twai_transmit(&msg, pdMS_TO_TICKS(200));
+
+    if (err != ESP_OK) {
+      std::cout << "ERROR: twai_transmit error code 0x" << std::hex << err << '\n';
+      if (err == ESP_ERR_INVALID_STATE) {
+        twai_delete();
+        twai_config();
+      }
+      return not_executed;
+    }
     return executed_ok;
   }
   return wrong_args_number;
@@ -156,6 +171,34 @@ enum return_codes cmd_inv(char *s, int s_orig_len, int n_tokens) {
     printf("cmd_inv: %s rate_inv=%d\n", en ? "ON" : "OFF", rate_inv);
     ledc_set_duty(LEDC_MODE, LEDC_CHANNEL_0, rate_inv);
     ledc_update_duty(LEDC_MODE, LEDC_CHANNEL_0);
+    return executed_ok;
+  }
+  return wrong_args_number;
+}
+
+enum return_codes cmd_led(char *s, int s_orig_len, int n_tokens) {
+  bool first = true;
+  if (first) {
+    gpio_set_direction((gpio_num_t) GPIO_NUM_12, (gpio_mode_t) GPIO_MODE_DEF_OUTPUT);
+    first = false;
+  }
+  std::cout << "cmd_led: n_tokens:" << n_tokens << '\n';
+  if (n_tokens == 2) {
+    std::string mode = get_token(s, s_orig_len, 1);
+
+    std::cout << "cmd_led: mode=" << mode << '\n';
+    if (mode == "on") {
+      gpio_set_level(GPIO_NUM_12, 1);
+      std::cout << "cmd_led: ON\n;";
+    }
+    else if (mode == "off") {
+      gpio_set_level(GPIO_NUM_12, 0);
+      std::cout << "cmd_led: OFF\n;";
+    }
+    else if (mode == "blink")
+      std::cout << "ERR: led blink is not implemented yet.\n";
+    else
+      return wrong_args;
     return executed_ok;
   }
   return wrong_args_number;

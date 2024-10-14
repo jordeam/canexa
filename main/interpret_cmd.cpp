@@ -21,6 +21,7 @@ int interpret_cmd(char *s, size_t size) {
   command_entry_t *cmde;
   int s_orig_len, n_tokens;
   enum return_codes r = not_found;
+
   s_orig_len = split_tokens(s);
   n_tokens = number_tokens(s, s_orig_len);
 

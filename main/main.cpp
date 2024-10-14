@@ -56,15 +56,15 @@
 
 extern "C" {
 #include "inv_config.h"
+#include "twai_config.h"
 }
 
 #define TAG "main"
 
-#define CMDSIZ 100
+#define CMDSIZ 1024
+#define READBUFSIZ 1024
 
-char cmd_line[CMDSIZ], read_buf[CMDSIZ];
-
-using std::cout;
+char cmd_line[CMDSIZ], read_buf[READBUFSIZ];
 
 // static void read_command_task(void *arg) {
 static void read_command() {
@@ -72,13 +72,13 @@ static void read_command() {
   char c;
   // int c;
   static int i = 0;
-  for (;;) {
+  while (true) {
     int len = uart_read_bytes(UART_NUM_0, &c, 1, portMAX_DELAY); // illegal instruction
     // std::cin.get(&c, 1); // it does not work oy any other overloads
     // c = fgetc(stdin);
     // std::cout << "got " << c << '\n';
     if (len <= 0) {
-      cout << "WARN: len < 0\n";
+      std::cout << "WARN: len < 0\n";
       vTaskDelay(pdMS_TO_TICKS(100));
     }
     else {
@@ -87,10 +87,10 @@ static void read_command() {
         // std::cout << "read_command: c=" << (char) c << '\n'; // " len=" << len << '\n';
       }
       else if (c == '\r' || c == '\n') {
-        // std::cout << '\r' << '\n' << std::endl;
         read_buf[i] = '\0';
         if (i >= 1) {
           strcpy(cmd_line, read_buf);
+          // std::cout << cmd_line << "\r\n";
           interpret_cmd(cmd_line, CMDSIZ);
         }
         i = 0;
@@ -106,18 +106,23 @@ static void read_command() {
 void twai_receive_task(void *pvParameters) {
   while (true) {
     twai_message_t msg;
-
+    esp_err_t err;
 //    ESP_LOGI(TAG, "RAM left %ld", esp_get_free_heap_size());
  //   ESP_LOGI(TAG, "wait_twai_msg task stack: %ld", uxTaskGetStackHighWaterMark(NULL));
 
     /* Wait for message to be received */
-    std::cout << "INFO: TWAI waiting for message..." << std::endl;
+    // std::cout << "INFO: TWAI waiting for message..." << std::endl;
     msg.data_length_code = 0;
-    if (twai_receive(&msg, portMAX_DELAY) == ESP_OK) {
-      std::cout << "INFO: Message received" << std::endl;
-    } else
+    if ((err = twai_receive(&msg, portMAX_DELAY)) == ESP_OK) {
+      std::cout << "INFO: Message received\n";
+    } else {
+      std::cout << "ERROR: twai_receive error code 0x" << std::hex << err << '\n';
+      if (err == ESP_ERR_INVALID_STATE) {
+        twai_delete();
+        twai_config();
+      }
       continue;
-
+    }
     // Verify if it is a Tupã Inverter PWM command
     if (msg.identifier == 0x1FFC0700 && msg.data_length_code == 1) {
       bool en = (msg.data[0] & 0x80) != 0;
@@ -147,55 +152,10 @@ void twai_receive_task(void *pvParameters) {
     if (msg.rtr) {
       std::cout << ' ' << "RTR";
     }
-    std::cout << std::endl;
+    std::cout << '\n';
   }
   vTaskDelete(NULL);
 }
-
-void twai_config(void) {
-  // Initialize configuration structures using macro initializers
-  twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
-      (gpio_num_t)CONFIG_TX_GPIO_NUM, (gpio_num_t)CONFIG_RX_GPIO_NUM,
-      TWAI_MODE_NORMAL);
-  twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
-  twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-
-  ESP_LOGI(TAG, "TX_PIN=%d RX_PIN=%d", CONFIG_TX_GPIO_NUM, CONFIG_RX_GPIO_NUM);
-
-  // Install TWAI driver
-  if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-//    ESP_LOGI(TAG, "TWAI Driver installed\n");
-  } else {
-    printf("Failed to install TWAI driver\n");
-    return;
-  }
-
-  // Start TWAI driver
-  if (twai_start() == ESP_OK) {
-//    ESP_LOGI(TAG, "TWAI Driver started");
-  } else {
-//    ESP_LOGI(TAG, "Failed to start TWAI driver");
-    return;
-  }
-}
-
-void twai_delete(void) {
-  // Stop the TWAI driver
-  if (twai_stop() == ESP_OK) {
-//    ESP_LOGI(TAG, "Driver stopped");
-  } else {
-//    ESP_LOGI(TAG, "Failed to stop driver");
-    return;
-  }
-  // Uninstall the TWAI driver
-  if (twai_driver_uninstall() == ESP_OK) {
-//    ESP_LOGI(TAG, "Driver uninstalled");
-  } else {
-//    ESP_LOGI(TAG, "Failed to uninstall driver");
-    return;
-  }
-}
-
 
 extern "C" void app_main(void) {
     esp_log_level_set(TAG, ESP_LOG_INFO);
@@ -229,6 +189,8 @@ extern "C" void app_main(void) {
       .data_bits = UART_DATA_8_BITS,
       .parity = UART_PARITY_DISABLE,
       .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+      .rx_flow_ctrl_thresh = 0,
       .source_clk = clk_source,
     };
     uart_param_config(dev_config->channel, &uart_config);
